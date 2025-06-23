@@ -1,15 +1,18 @@
 import sys
 import os
 import tempfile
-import subprocess
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel,
-    QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QFileDialog
+    QLineEdit, QPushButton, QMessageBox, QHBoxLayout,
+    QFileDialog
 )
 from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt
 import qrcode
 from PIL import Image
+import win32print
+import win32ui
+import win32con
 
 
 class QRCodeGenerator(QWidget):
@@ -42,8 +45,8 @@ class QRCodeGenerator(QWidget):
         self.save_btn.setEnabled(False)
         buttons_layout.addWidget(self.save_btn)
 
-        self.print_btn = QPushButton("Печать")
-        self.print_btn.clicked.connect(self.print_qr)
+        self.print_btn = QPushButton("Печать (Windows API)")
+        self.print_btn.clicked.connect(self.print_qr_native)
         self.print_btn.setEnabled(False)
         buttons_layout.addWidget(self.print_btn)
 
@@ -67,7 +70,6 @@ class QRCodeGenerator(QWidget):
             return
 
         try:
-            # Создаем QR-код
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -77,14 +79,9 @@ class QRCodeGenerator(QWidget):
             qr.add_data(text)
             qr.make(fit=True)
 
-            # Генерируем изображение
             img = qr.make_image(fill_color="black", back_color="white")
             self.current_qr_image = img
-
-            # Отображаем QR-код
             self.display_qr_code(img)
-
-            # Активируем кнопки
             self.save_btn.setEnabled(True)
             self.print_btn.setEnabled(True)
 
@@ -93,18 +90,14 @@ class QRCodeGenerator(QWidget):
 
     def display_qr_code(self, img):
         """Отображение QR-кода в интерфейсе"""
-        # Конвертируем PIL Image в QPixmap
         qimage = QImage(img.tobytes(), img.size[0], img.size[1], QImage.Format.Format_RGB888)
         pixmap = QPixmap.fromImage(qimage)
-
-        # Масштабируем с сохранением пропорций
         scaled_pixmap = pixmap.scaled(
             self.qr_display.width() - 20,
             self.qr_display.height() - 20,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation
         )
-
         self.qr_display.setPixmap(scaled_pixmap)
 
     def save_qr(self):
@@ -114,7 +107,6 @@ class QRCodeGenerator(QWidget):
 
         default_name = "qr_code.png"
         if self.input_field.text().strip():
-            # Создаем имя файла на основе текста (с ограничением длины и заменой спецсимволов)
             text = self.input_field.text()[:30]
             text = "".join(c if c.isalnum() else "_" for c in text)
             default_name = f"qr_{text}.png"
@@ -137,42 +129,86 @@ class QRCodeGenerator(QWidget):
             except Exception as e:
                 self.show_error("Ошибка сохранения", f"Не удалось сохранить файл: {str(e)}")
 
-    def print_qr(self):
-        """Печать QR-кода через системный диалог печати"""
+    def print_qr_native(self):
+        """Нативная печать через Windows API с обработкой отсутствия принтера"""
         if not self.current_qr_image:
             return
 
-        # Создаем временный файл
-        temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, "temp_qr_print.png")
-
         try:
-            # Сохраняем QR-код во временный файл
+            # Проверка наличия принтеров
+            printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
+            if not printers:
+                self.show_error("Ошибка", "Не найдены принтеры. Подключите принтер и попробуйте снова.")
+                return
+
+            # Получаем дефолтный принтер или первый доступный
+            try:
+                printer_name = win32print.GetDefaultPrinter()
+            except:
+                printer_name = printers[0][2]  # Берем первый доступный принтер
+
+            # Создаем временный BMP файл
+            temp_dir = tempfile.gettempdir()
+            temp_path = os.path.join(temp_dir, "temp_qr_print.bmp")
             self.current_qr_image.save(temp_path)
 
-            # Открываем диалог печати (Windows)
-            if sys.platform == "win32":
-                subprocess.run([
-                    "rundll32.exe",
-                    "shell32.dll,PrintTo",
-                    temp_path,
-                    ""
-                ], check=True)
-            else:
-                # Для других ОС можно использовать альтернативные методы
+            # Открываем принтер
+            hprinter = win32print.OpenPrinter(printer_name)
+            try:
+                hdc = win32ui.CreateDC()
+                hdc.CreatePrinterDC(printer_name)
+                hdc.StartDoc("QR Code Print")
+                hdc.StartPage()
+
+                # Загружаем изображение
+                bmp = win32ui.CreateBitmap()
+                bmp.LoadBitmap(temp_path)
+
+                # Получаем размеры
+                bmp_info = bmp.GetInfo()
+                img_width = bmp_info['bmWidth']
+                img_height = bmp_info['bmHeight']
+
+                # Получаем размеры страницы
+                printable_width = hdc.GetDeviceCaps(win32con.HORZRES)
+                printable_height = hdc.GetDeviceCaps(win32con.VERTRES)
+
+                # Масштабирование с сохранением пропорций
+                scale = min(printable_width / img_width, printable_height / img_height) * 0.9
+                new_width = int(img_width * scale)
+                new_height = int(img_height * scale)
+
+                # Центрирование
+                x_pos = (printable_width - new_width) // 2
+                y_pos = (printable_height - new_height) // 2
+
+                # Печать
+                hdc.StretchBlt(
+                    x_pos, y_pos, new_width, new_height,
+                    bmp.GetHandle(),
+                    0, 0, img_width, img_height,
+                    win32con.SRCCOPY
+                )
+
+                hdc.EndPage()
+                hdc.EndDoc()
+
                 QMessageBox.information(
                     self,
                     "Печать",
-                    "Функция печати доступна только в Windows. "
-                    "Сохраните QR-код и распечатайте его вручную."
+                    f"QR-код отправлен на принтер:\n{printer_name}"
                 )
 
+            except Exception as e:
+                self.show_error("Ошибка печати", f"Ошибка при печати: {str(e)}")
+            finally:
+                win32print.ClosePrinter(hprinter)
+                hdc.DeleteDC()
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+
         except Exception as e:
-            self.show_error("Ошибка печати", f"Не удалось выполнить печать: {str(e)}")
-        finally:
-            # Удаляем временный файл
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            self.show_error("Ошибка", f"Не удалось выполнить печать: {str(e)}")
 
     def show_error(self, title, message):
         """Показ сообщения об ошибке"""
@@ -187,13 +223,9 @@ class QRCodeGenerator(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-
-    # Настройка стиля приложения
     app.setStyle("Fusion")
-
     generator = QRCodeGenerator()
     generator.show()
-
     sys.exit(app.exec())
 
 
