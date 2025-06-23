@@ -30,7 +30,7 @@ class QRCodeGenerator(QWidget):
 
         # Поле ввода
         self.input_field = QLineEdit()
-        self.input_field.setPlaceholderText("Введите текст или URL...")
+        self.input_field.setPlaceholderText("Введите текст")
         layout.addWidget(self.input_field)
 
         # Кнопки действий
