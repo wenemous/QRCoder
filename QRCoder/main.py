@@ -18,7 +18,7 @@ import win32con
 class QRCodeGenerator(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Генератор QR-кодов")
+        self.setWindowTitle("QRCoder")
         self.setMinimumSize(400, 500)
         self.current_qr_image = None
 
