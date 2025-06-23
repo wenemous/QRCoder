@@ -45,7 +45,7 @@ class QRCodeGenerator(QWidget):
         self.save_btn.setEnabled(False)
         buttons_layout.addWidget(self.save_btn)
 
-        self.print_btn = QPushButton("Печать (Windows API)")
+        self.print_btn = QPushButton("Печать")
         self.print_btn.clicked.connect(self.print_qr_native)
         self.print_btn.setEnabled(False)
         buttons_layout.addWidget(self.print_btn)
