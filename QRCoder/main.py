@@ -1,21 +1,23 @@
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QHBoxLayout
 )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 import qrcode
 from PIL.ImageQt import ImageQt
 import sys
+
 import win32print
 import win32ui
-from PIL import Image
+import win32con
+from PIL import Image, ImageWin
 
 
 class QRCodeApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Генератор QR-кода")
-        self.setGeometry(100, 100, 300, 400)
+        self.setGeometry(100, 100, 350, 450)
 
         self.layout = QVBoxLayout()
 
@@ -25,9 +27,19 @@ class QRCodeApp(QWidget):
         self.text_input = QLineEdit()
         self.layout.addWidget(self.text_input)
 
+        # Горизонтальный лэйаут для кнопок
+        self.buttons_layout = QHBoxLayout()
+
         self.button_generate = QPushButton("Сгенерировать QR-код")
         self.button_generate.clicked.connect(self.generate_qrcode)
-        self.layout.addWidget(self.button_generate)
+        self.buttons_layout.addWidget(self.button_generate)
+
+        self.button_print_native = QPushButton("Печать (Windows)")
+        self.button_print_native.clicked.connect(self.print_qrcode_native)
+        self.button_print_native.setEnabled(False)  # Пока QR-код не сгенерирован
+        self.buttons_layout.addWidget(self.button_print_native)
+
+        self.layout.addLayout(self.buttons_layout)
 
         self.qr_label = QLabel()
         self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -35,10 +47,7 @@ class QRCodeApp(QWidget):
 
         self.setLayout(self.layout)
 
-        self.button_print_native = QPushButton("Печать (Windows)")
-        self.button_print_native.clicked.connect(self.print_qrcode_native)
-        self.button_print_native.setEnabled(False)
-        self.buttons_layout.addWidget(self.button_print_native)
+        self.current_pixmap = None  # Для хранения текущего QR-кода
 
     def generate_qrcode(self):
         text = self.text_input.text().strip()
@@ -61,28 +70,32 @@ class QRCodeApp(QWidget):
         # Конвертируем PIL Image в QPixmap для отображения в QLabel
         qt_image = ImageQt(img)
         pixmap = QPixmap.fromImage(qt_image)
-        self.qr_label.setPixmap(pixmap.scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio))
+        scaled_pixmap = pixmap.scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio)
+
+        self.qr_label.setPixmap(scaled_pixmap)
+        self.current_pixmap = scaled_pixmap
+        self.button_print_native.setEnabled(True)  # Активируем кнопку печати
 
     def print_qrcode_native(self):
         if self.current_pixmap is None:
             QMessageBox.warning(self, "Ошибка", "Сначала сгенерируйте QR-код.")
             return
 
+        # Конвертируем QPixmap обратно в PIL Image
         qimage = self.current_pixmap.toImage()
-        buffer = qimage.bits().asstring(qimage.byteCount())
-        img = Image.frombytes(
-            "RGBA",
-            (qimage.width(), qimage.height()),
-            buffer,
-            "raw",
-            "BGRA"
-        )
+        qimage = qimage.convertToFormat(4)  # QImage.Format_RGBA8888 = 4
+        width = qimage.width()
+        height = qimage.height()
+        ptr = qimage.bits()
+        ptr.setsize(qimage.byteCount())
+        img = Image.frombuffer("RGBA", (width, height), ptr, "raw", "RGBA", 0, 1)
 
         printer_name = win32print.GetDefaultPrinter()
         hPrinter = win32print.OpenPrinter(printer_name)
         try:
             hDC = win32ui.CreateDC()
             hDC.CreatePrinterDC(printer_name)
+
             printable_area = hDC.GetDeviceCaps(win32con.HORZRES), hDC.GetDeviceCaps(win32con.VERTRES)
             printer_size = hDC.GetDeviceCaps(win32con.PHYSICALWIDTH), hDC.GetDeviceCaps(win32con.PHYSICALHEIGHT)
             printer_margins = hDC.GetDeviceCaps(win32con.PHYSICALOFFSETX), hDC.GetDeviceCaps(win32con.PHYSICALOFFSETY)
