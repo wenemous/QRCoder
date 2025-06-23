@@ -16,3 +16,6 @@ Pillow = "^10.0.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^5.13.0"
