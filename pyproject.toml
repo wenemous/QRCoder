@@ -7,7 +7,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-PyQt5 = "^5.15.9"
+pyqt5 = "5.15.10"
+pyqt5-qt5 = "5.15.2"
 qrcode = "^7.4.2"
 Pillow = "^10.0.0"
 
