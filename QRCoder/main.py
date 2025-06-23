@@ -12,105 +12,188 @@ import qrcode
 from PIL import Image
 
 
-class QRCodeApp(QWidget):
+class QRCodeGenerator(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Генератор QR-кода")
-        self.setGeometry(100, 100, 300, 450)
+        self.setWindowTitle("Генератор QR-кодов")
+        self.setMinimumSize(400, 500)
+        self.current_qr_image = None
 
-        self.layout = QVBoxLayout()
+        self.init_ui()
 
-        self.label_instruction = QLabel("Введите текст для генерации QR-кода:")
-        self.layout.addWidget(self.label_instruction)
+    def init_ui(self):
+        """Инициализация пользовательского интерфейса"""
+        layout = QVBoxLayout()
 
-        self.text_input = QLineEdit()
-        self.layout.addWidget(self.text_input)
+        # Поле ввода
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText("Введите текст или URL...")
+        layout.addWidget(self.input_field)
 
-        # Горизонтальный лэйаут для кнопок
-        self.buttons_layout = QHBoxLayout()
+        # Кнопки действий
+        buttons_layout = QHBoxLayout()
 
-        self.button_generate = QPushButton("Сгенерировать QR-код")
-        self.button_generate.clicked.connect(self.generate_qrcode)
-        self.buttons_layout.addWidget(self.button_generate)
+        self.generate_btn = QPushButton("Сгенерировать")
+        self.generate_btn.clicked.connect(self.generate_qr)
+        buttons_layout.addWidget(self.generate_btn)
 
-        self.button_print = QPushButton("Печать QR-кода")
-        self.button_print.clicked.connect(self.print_qrcode)
-        self.button_print.setEnabled(False)  # Пока QR-код не сгенерирован, кнопка неактивна
-        self.buttons_layout.addWidget(self.button_print)
+        self.save_btn = QPushButton("Сохранить")
+        self.save_btn.clicked.connect(self.save_qr)
+        self.save_btn.setEnabled(False)
+        buttons_layout.addWidget(self.save_btn)
 
-        self.layout.addLayout(self.buttons_layout)
+        self.print_btn = QPushButton("Печать")
+        self.print_btn.clicked.connect(self.print_qr)
+        self.print_btn.setEnabled(False)
+        buttons_layout.addWidget(self.print_btn)
 
-        self.qr_label = QLabel()
-        self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(self.qr_label)
+        layout.addLayout(buttons_layout)
 
-        self.setLayout(self.layout)
+        # Область отображения QR-кода
+        self.qr_display = QLabel()
+        self.qr_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.qr_display.setText("QR-код появится здесь")
+        self.qr_display.setMinimumSize(300, 300)
+        layout.addWidget(self.qr_display)
 
-        self.button_print_dialog = QPushButton("Печать с диалогом Windows")
-        self.button_print_dialog.clicked.connect(self.print_qrcode_native_dialog)
-        self.button_print_dialog.setEnabled(False)
-        self.buttons_layout.addWidget(self.button_print_dialog)
+        self.setLayout(layout)
 
-        self.current_pixmap = None  # Для хранения текущего QR-кода
+    def generate_qr(self):
+        """Генерация QR-кода из введенного текста"""
+        text = self.input_field.text().strip()
 
-    def generate_qrcode(self):
-        text = self.text_input.text().strip()
         if not text:
-            QMessageBox.warning(self, "Ошибка", "Пожалуйста, введите текст.")
+            self.show_error("Ошибка", "Пожалуйста, введите текст для генерации QR-кода")
             return
 
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(text)
-        qr.make(fit=True)
-
-        img = qr.make_image(fill_color="black", back_color="white")
-
-        qt_image = ImageQt(img)
-        pixmap = QPixmap.fromImage(qt_image)
-        scaled_pixmap = pixmap.scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio)
-
-        self.qr_label.setPixmap(scaled_pixmap)
-        self.current_pixmap = scaled_pixmap
-        self.button_print.setEnabled(True)  # Активируем кнопку печати
-        self.button_print_dialog.setEnabled(True)
-
-    def print_qrcode_native_dialog(self):
-        if self.current_pixmap is None:
-            QMessageBox.warning(self, "Ошибка", "Сначала сгенерируйте QR-код.")
-            return
-
-        # Сохраняем текущий QR-код во временный PNG файл
-        temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, "temp_qrcode.png")
-        self.current_pixmap.save(temp_path, "PNG")
-
-        # Вызываем нативный диалог печати Windows через rundll32
-        # Команда открывает диалог печати для указанного файла
         try:
-            subprocess.run([
-                "rundll32.exe",
-                "shell32.dll,PrintTo",
-                temp_path,
-                # Можно указать имя принтера, но оставим пустым для выбора
-                ""
-            ], check=True)
-        except subprocess.CalledProcessError as e:
-            QMessageBox.warning(self, "Ошибка", f"Не удалось открыть диалог печати:\n{e}")
+            # Создаем QR-код
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(text)
+            qr.make(fit=True)
+
+            # Генерируем изображение
+            img = qr.make_image(fill_color="black", back_color="white")
+            self.current_qr_image = img
+
+            # Отображаем QR-код
+            self.display_qr_code(img)
+
+            # Активируем кнопки
+            self.save_btn.setEnabled(True)
+            self.print_btn.setEnabled(True)
+
+        except Exception as e:
+            self.show_error("Ошибка генерации", f"Не удалось сгенерировать QR-код: {str(e)}")
+
+    def display_qr_code(self, img):
+        """Отображение QR-кода в интерфейсе"""
+        # Конвертируем PIL Image в QPixmap
+        qimage = QImage(img.tobytes(), img.size[0], img.size[1], QImage.Format.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimage)
+
+        # Масштабируем с сохранением пропорций
+        scaled_pixmap = pixmap.scaled(
+            self.qr_display.width() - 20,
+            self.qr_display.height() - 20,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+
+        self.qr_display.setPixmap(scaled_pixmap)
+
+    def save_qr(self):
+        """Сохранение QR-кода в файл"""
+        if not self.current_qr_image:
+            return
+
+        default_name = "qr_code.png"
+        if self.input_field.text().strip():
+            # Создаем имя файла на основе текста (с ограничением длины и заменой спецсимволов)
+            text = self.input_field.text()[:30]
+            text = "".join(c if c.isalnum() else "_" for c in text)
+            default_name = f"qr_{text}.png"
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Сохранить QR-код",
+            os.path.join(os.getcwd(), default_name),
+            "PNG (*.png);;JPEG (*.jpg *.jpeg);;BMP (*.bmp);;All Files (*)"
+        )
+
+        if file_path:
+            try:
+                self.current_qr_image.save(file_path)
+                QMessageBox.information(
+                    self,
+                    "Сохранено",
+                    f"QR-код успешно сохранен как:\n{file_path}"
+                )
+            except Exception as e:
+                self.show_error("Ошибка сохранения", f"Не удалось сохранить файл: {str(e)}")
+
+    def print_qr(self):
+        """Печать QR-кода через системный диалог печати"""
+        if not self.current_qr_image:
+            return
+
+        # Создаем временный файл
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, "temp_qr_print.png")
+
+        try:
+            # Сохраняем QR-код во временный файл
+            self.current_qr_image.save(temp_path)
+
+            # Открываем диалог печати (Windows)
+            if sys.platform == "win32":
+                subprocess.run([
+                    "rundll32.exe",
+                    "shell32.dll,PrintTo",
+                    temp_path,
+                    ""
+                ], check=True)
+            else:
+                # Для других ОС можно использовать альтернативные методы
+                QMessageBox.information(
+                    self,
+                    "Печать",
+                    "Функция печати доступна только в Windows. "
+                    "Сохраните QR-код и распечатайте его вручную."
+                )
+
+        except Exception as e:
+            self.show_error("Ошибка печати", f"Не удалось выполнить печать: {str(e)}")
         finally:
             # Удаляем временный файл
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
+    def show_error(self, title, message):
+        """Показ сообщения об ошибке"""
+        QMessageBox.critical(self, title, message)
+
+    def resizeEvent(self, event):
+        """Обработчик изменения размера окна"""
+        super().resizeEvent(event)
+        if self.current_qr_image:
+            self.display_qr_code(self.current_qr_image)
+
 
 def main():
     app = QApplication(sys.argv)
-    window = QRCodeApp()
-    window.show()
+
+    # Настройка стиля приложения
+    app.setStyle("Fusion")
+
+    generator = QRCodeGenerator()
+    generator.show()
+
     sys.exit(app.exec())
 
 
