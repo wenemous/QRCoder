@@ -1,11 +1,15 @@
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QHBoxLayout
-)
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
-import qrcode
-from PIL.ImageQt import ImageQt
 import sys
+import os
+import tempfile
+import subprocess
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel,
+    QLineEdit, QPushButton, QMessageBox, QHBoxLayout, QFileDialog
+)
+from PyQt6.QtGui import QPixmap, QImage
+from PyQt6.QtCore import Qt, QSize
+import qrcode
+from PIL import Image
 
 
 class QRCodeApp(QWidget):
