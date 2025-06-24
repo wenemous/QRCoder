@@ -90,16 +90,26 @@ class QRCodeGenerator(QWidget):
             self.show_error("Ошибка генерации", f"Не удалось сгенерировать QR-код: {str(e)}")
 
     def display_qr_code(self, img):
-        """Отображение QR-кода в интерфейсе"""
-        qimage = QImage(img.tobytes(), img.size[0], img.size[1], QImage.Format.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimage)
-        scaled_pixmap = pixmap.scaled(
-            self.qr_display.width() - 20,
-            self.qr_display.height() - 20,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
-        )
-        self.qr_display.setPixmap(scaled_pixmap)
+        """Корректное отображение QR-кода без артефактов"""
+        try:
+            # Конвертируем PIL Image в QImage через ImageQt
+            qimage = ImageQt.ImageQt(img)
+
+            # Создаем QPixmap и масштабируем с сохранением пропорций
+            pixmap = QPixmap.fromImage(qimage)
+            scaled_pixmap = pixmap.scaled(
+                self.qr_display.width() - 20,
+                self.qr_display.height() - 20,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+
+            # Устанавливаем четкий режим отображения
+            self.qr_display.setPixmap(scaled_pixmap)
+            self.qr_display.setScaledContents(False)
+
+        except Exception as e:
+            self.show_error("Ошибка отображения", f"Не удалось отобразить QR-код: {str(e)}")
 
     def save_qr(self):
         """Сохранение QR-кода в файл"""
