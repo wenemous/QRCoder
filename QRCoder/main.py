@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtCore import Qt
 import qrcode
-from PIL import Image
+from PIL import Image, ImageQt
 import win32print
 import win32ui
 import win32con
@@ -70,6 +70,7 @@ class QRCodeGenerator(QWidget):
             return
 
         try:
+            # Создаем QR-код с более высоким разрешением
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -82,7 +83,11 @@ class QRCodeGenerator(QWidget):
             # Создаем изображение с режимом '1' (ч/б) для четкости
             img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
             self.current_qr_image = img
+
+            # Отображаем QR-код
             self.display_qr_code(img)
+
+            # Активируем кнопки
             self.save_btn.setEnabled(True)
             self.print_btn.setEnabled(True)
 
@@ -142,27 +147,24 @@ class QRCodeGenerator(QWidget):
                 self.show_error("Ошибка сохранения", f"Не удалось сохранить файл: {str(e)}")
 
     def print_qr_native(self):
-        """Нативная печать через Windows API с обработкой отсутствия принтера"""
+        """Нативная печать через Windows API"""
         if not self.current_qr_image:
             return
 
         try:
-            # Проверка наличия принтеров
             printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL)
             if not printers:
                 self.show_error("Ошибка", "Не найдены принтеры. Подключите принтер и попробуйте снова.")
                 return
 
-            # Получаем дефолтный принтер или первый доступный
             try:
                 printer_name = win32print.GetDefaultPrinter()
             except:
                 printer_name = printers[0][2]
 
-            # Создаем временный BMP файл
+            # Создаем временный файл в высоком качестве
             temp_dir = tempfile.gettempdir()
             temp_path = os.path.join(temp_dir, "temp_qr_print.bmp")
-            self.current_qr_image.save(temp_path)
 
             # Сохраняем как BMP с высоким DPI
             self.current_qr_image.save(temp_path, dpi=(300, 300))
@@ -174,29 +176,23 @@ class QRCodeGenerator(QWidget):
                 hdc.StartDoc("QR Code Print")
                 hdc.StartPage()
 
-                # Загружаем изображение
                 bmp = win32ui.CreateBitmap()
                 bmp.LoadBitmap(temp_path)
 
-                # Получаем размеры
                 bmp_info = bmp.GetInfo()
                 img_width = bmp_info['bmWidth']
                 img_height = bmp_info['bmHeight']
 
-                # Получаем размеры страницы
                 printable_width = hdc.GetDeviceCaps(win32con.HORZRES)
                 printable_height = hdc.GetDeviceCaps(win32con.VERTRES)
 
-                # Масштабирование с сохранением пропорций
                 scale = min(printable_width / img_width, printable_height / img_height) * 0.9
                 new_width = int(img_width * scale)
                 new_height = int(img_height * scale)
 
-                # Центрирование
                 x_pos = (printable_width - new_width) // 2
                 y_pos = (printable_height - new_height) // 2
 
-                # Печать
                 hdc.StretchBlt(
                     x_pos, y_pos, new_width, new_height,
                     bmp.GetHandle(),
