@@ -2,7 +2,7 @@ import sys
 import os
 import tempfile
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel,
+    QApplication, QWidget, QVBoxLayout, QLabel, QMainWindow, QTableView, QFileDialog,
     QLineEdit, QPushButton, QMessageBox, QHBoxLayout,
     QFileDialog
 )
