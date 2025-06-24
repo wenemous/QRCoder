@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox
+    QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox, QHBoxLayout
 )
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import Qt
 import qrcode
 from PIL.ImageQt import ImageQt
 import os
@@ -83,7 +83,7 @@ class QRGeneratorWindow(QMainWindow):
             qim = ImageQt(img)
             pixmap = QPixmap.fromImage(qim)
             self.qr_label.setPixmap(
-                pixmap.scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                pixmap.scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
             self.save_btn.setEnabled(True)
 
