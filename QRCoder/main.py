@@ -164,7 +164,9 @@ class QRCodeGenerator(QWidget):
             temp_path = os.path.join(temp_dir, "temp_qr_print.bmp")
             self.current_qr_image.save(temp_path)
 
-            # Открываем принтер
+            # Сохраняем как BMP с высоким DPI
+            self.current_qr_image.save(temp_path, dpi=(300, 300))
+
             hprinter = win32print.OpenPrinter(printer_name)
             try:
                 hdc = win32ui.CreateDC()
