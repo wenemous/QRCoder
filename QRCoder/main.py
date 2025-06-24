@@ -157,7 +157,7 @@ class QRCodeGenerator(QWidget):
             try:
                 printer_name = win32print.GetDefaultPrinter()
             except:
-                printer_name = printers[0][2]  # Берем первый доступный принтер
+                printer_name = printers[0][2]
 
             # Создаем временный BMP файл
             temp_dir = tempfile.gettempdir()
