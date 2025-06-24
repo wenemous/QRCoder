@@ -79,7 +79,8 @@ class QRCodeGenerator(QWidget):
             qr.add_data(text)
             qr.make(fit=True)
 
-            img = qr.make_image(fill_color="black", back_color="white")
+            # Создаем изображение с режимом '1' (ч/б) для четкости
+            img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
             self.current_qr_image = img
             self.display_qr_code(img)
             self.save_btn.setEnabled(True)
