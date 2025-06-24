@@ -131,7 +131,8 @@ class QRCodeGenerator(QWidget):
 
         if file_path:
             try:
-                self.current_qr_image.save(file_path)
+                # Сохраняем с максимальным качеством
+                self.current_qr_image.save(file_path, quality=100)
                 QMessageBox.information(
                     self,
                     "Сохранено",
