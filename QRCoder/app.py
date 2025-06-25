@@ -76,3 +76,34 @@ class MainWindow(QWidget):
         data = self.df.iloc[row].to_dict()
         qr_text = self.format_qr_data(data)
         self.show_qr_code(qr_text)
+
+    def format_qr_data(self, data):
+       # Преобразует данные строки в строку для QR-кода
+        formatted_string = ""
+        for key, value in data.items():
+            formatted_string += f"{key}:{value}\n"
+        return formatted_string
+
+    def show_qr_code(self, data):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=5,
+            border=4,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save("temp_qr.png")
+        qr_image = QPixmap("temp_qr.png")
+
+        dialog = QRDialog(qr_image, self)
+        dialog.exec()
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
