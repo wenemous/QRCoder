@@ -60,4 +60,19 @@ class MainWindow(QWidget):
             except Exception as e:
                 print(f"Error loading file: {e}")
 
-    
+    def populate_table(self):
+        self.table_model.clear()
+        self.table_model.setRowCount(self.df.shape[0])
+        self.table_model.setColumnCount(self.df.shape[1])
+        self.table_model.setHorizontalHeaderLabels(self.df.columns)
+
+        for row in range(self.df.shape[0]):
+            for col in range(self.df.shape[1]):
+                item = QStandardItem(str(self.df.iloc[row, col]))
+                self.table_model.setItem(row, col, item)
+
+    def row_selected(self, index):
+        row = index.row()
+        data = self.df.iloc[row].to_dict()
+        qr_text = self.format_qr_data(data)
+        self.show_qr_code(qr_text)
