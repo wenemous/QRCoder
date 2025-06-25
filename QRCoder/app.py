@@ -50,3 +50,14 @@ class MainWindow(QWidget):
 
         self.table_view.clicked.connect(self.row_selected)
 
+    def load_xls(self):
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(self, "Open XLS File", "", "XLS Files (*.xls *.xlsx)")
+        if file_path:
+            try:
+                self.df = pd.read_excel(file_path)
+                self.populate_table()
+            except Exception as e:
+                print(f"Error loading file: {e}")
+
+    
