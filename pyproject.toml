@@ -12,6 +12,8 @@ Pillow = "^10.0.0"
 pyqt6 = "^6.9.1"
 pywin32 = "^310"
 relatorio = "^0.11.1"
+pandas = "^2.3.0"
+openpyxl = "^3.1.5"
 
 
 [build-system]
