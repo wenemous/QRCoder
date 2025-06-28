@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qrcoder"
-version = "0.0.1"
+version = "1.0.0"
 description = "App for creating and reading QR-codes"
 authors = ["WENEMOUS TURNIP <novus.lordo.seclorum@gmail.com>"]
 readme = "README.md"
