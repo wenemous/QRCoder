@@ -8,14 +8,18 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QTableView, QHeaderView,
 from PyQt6.QtGui import (QStandardItemModel, QStandardItem, QPixmap, QIcon,
                              QPainter)
 from PyQt6.QtCore import Qt
-from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+# from PyQt6.QtPrintSupport import QPrinter, QPrintDialog  # Remove Qt Print
+import win32api
+import win32print
+import os
 
 class QRDialog(QDialog):
-    def __init__(self, qr_image, parent=None):
+    def __init__(self, qr_image_path, parent=None):  # Now takes image path
         super().__init__(parent)
         self.setWindowTitle("QRCoder")
         self.setWindowIcon(QIcon("qr_icon.png"))
-        self.qr_image = qr_image
+        self.qr_image_path = qr_image_path  # Store the path
+        self.qr_image = QPixmap(self.qr_image_path) # Load from file
         self.qr_label = QLabel()
         self.qr_label.setPixmap(self.qr_image)
 
@@ -37,19 +41,11 @@ class QRDialog(QDialog):
         self.setLayout(vbox)
 
     def print_qr_code(self):
-        printer = QPrinter()
-        dialog = QPrintDialog(printer, self)
+        try:
+            win32api.ShellExecute(0, 'print', self.qr_image_path, f'/d:"{win32print.GetDefaultPrinter()}"', '.', 0)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка печати", f"Произошла ошибка при печати: {e}")
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            painter = QPainter(printer)
-            rect = painter.viewport()
-            size = self.qr_image.size()
-            size.scale(rect.size(), Qt.AspectRatioMode.KeepAspectRatio)
-
-            painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
-            painter.setWindow(self.qr_image.rect())
-            painter.drawPixmap(0, 0, self.qr_image)
-            painter.end()
 
 class ScanWindow(QDialog):
     def __init__(self, main_window, parent=None):
@@ -218,10 +214,10 @@ class ScanWindow(QDialog):
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
-        img.save("temp_qr.png")
-        qr_image = QPixmap("temp_qr.png")
+        img_path = "temp_qr.png"  # Save the QR code image to a file
+        img.save(img_path)
 
-        dialog = QRDialog(qr_image, self)
+        dialog = QRDialog(img_path, self) # Pass the image path
         dialog.exec()
 
 class MainWindow(QWidget):
@@ -302,10 +298,10 @@ class MainWindow(QWidget):
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
-        img.save("temp_qr.png")
-        qr_image = QPixmap("temp_qr.png")
+        img_path = "temp_qr.png"  # Save the QR code image to a file
+        img.save(img_path)
 
-        dialog = QRDialog(qr_image, self)
+        dialog = QRDialog(img_path, self) # Pass the image path
         dialog.exec()
 
     def open_scan_window(self):
